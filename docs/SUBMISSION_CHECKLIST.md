@@ -8,9 +8,10 @@
 
 | Thành phần | Đường dẫn | Trạng thái chuẩn hóa | Ghi chú |
 | :--- | :--- | :---: | :--- |
-| **Hướng dẫn chạy** | `README.md` | [x] Chuẩn hóa | Hướng dẫn chạy & tái tạo thí nghiệm |
-| **Server Prototype** | `src/server/` | [x] Chuẩn hóa | Mã nguồn TCP Server đa luồng (TV1) |
-| **Load Generator** | `src/load-generator/` | [x] Chuẩn hóa | Mã nguồn tạo tải & đo lường (TV2) |
+| **Hướng dẫn chạy** | `README.md` | [x] Hoàn thành | Hướng dẫn chạy & tái tạo thí nghiệm (TV6) |
+| **Server Prototype** | `src/main/java/com/research/server/` | [x] Hoàn thành | Mã nguồn TCP Server đa luồng (TV1) |
+| **Load Generator** | `src/load-generator/` | [x] Hoàn thành | Mã nguồn tạo tải & đo lường (TV2) |
+| **Giao thức chung**| `docs/protocol.md` | [x] Hoàn thành | Đặc tả Frame nhị phân 1036 bytes (TV1) |
 | **Cấu hình đo** | `experiments/configs/` | [x] Chuẩn hóa | File cấu hình JSON (TV3) |
 | **Dữ liệu thô** | `experiments/raw-data/` | [x] Chuẩn hóa | Dữ liệu CSV/JSON đo đạc thực tế (TV3) |
 | **Script phân tích**| `experiments/analysis/`| [x] Chuẩn hóa | Script Python phân tích số liệu (TV4) |
@@ -27,12 +28,12 @@
    - Bảng phân chia công việc & tỷ lệ % đóng góp của từng thành viên.
    - Trích dẫn tối thiểu 3 tài liệu tham khảo chuẩn (IEEE).
    - Khai báo công cụ AI (nếu có sử dụng).
-2. [ ] **Mã nguồn hoàn chỉnh:**
-   - TCP Server (`src/server/`)
-   - Load Generator (`src/load-generator/`)
-   - Đảm bảo biên dịch không lỗi.
-3. [ ] **README.md:**
-   - Cung cấp chính xác câu lệnh biên dịch và tái lập thí nghiệm chỉ với 1–2 lệnh.
+2. [x] **Mã nguồn hoàn chỉnh (Đã kiểm chứng biên dịch thành công):**
+   - TCP Server (`src/main/java/com/research/server/` - TV1)
+   - Load Generator (`src/load-generator/` - TV2)
+   - Protocol chung (`src/main/java/com/research/common/Protocol.java` - TV1)
+3. [x] **README.md:**
+   - Đầy đủ thông số, lệnh biên dịch và tái lập thí nghiệm chỉ với 1–2 lệnh.
 4. [ ] **Dữ liệu thực nghiệm & Biểu đồ:**
    - Dữ liệu thô trong `experiments/raw-data/` (đo tối thiểu 3 mức: 1, 10, 50 Clients, mỗi mức lặp lại 3 lần).
    - Tối thiểu 2 biểu đồ (khuyến nghị 3 biểu đồ: Throughput, Latency & Tail Latency p95, CPU Usage) trong `experiments/figures/`.

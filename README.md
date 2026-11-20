@@ -33,16 +33,18 @@ project-root/
 ├── pom.xml
 ├── .gitignore
 ├── src/
-│   ├── server/
-│   │   ├── TCPEchoServer.java
-│   │   ├── ClientHandler.java
-│   │   └── CpuMonitor.java
-│   ├── load-generator/
+│   ├── server/                                # Thư mục định danh theo đề bài
+│   ├── load-generator/                        # Ứng dụng tạo tải độc lập (TV2)
 │   │   ├── LoadGeneratorApp.java
 │   │   ├── BenchmarkWorker.java
 │   │   └── MetricsCollector.java
-│   └── main/java/com/research/common/
-│       └── Protocol.java
+│   └── main/java/com/research/
+│       ├── common/
+│       │   └── Protocol.java                  # Hằng số giao thức chung (TV1 & TV2)
+│       └── server/                            # Mã nguồn TCP Server đa luồng (TV1)
+│           ├── TCPEchoServer.java
+│           ├── ClientHandler.java
+│           └── CpuMonitor.java
 ├── experiments/
 │   ├── configs/
 │   │   └── benchmark_config.json
@@ -57,7 +59,9 @@ project-root/
 │       ├── latency_vs_clients.png
 │       └── cpu_vs_clients.png
 └── docs/
-    └── REPORT.pdf
+    ├── protocol.md                            # Đặc tả kỹ thuật giao thức Framing (TV1)
+    ├── SUBMISSION_CHECKLIST.md                # Checklist kiểm soát hồ sơ nộp bài (TV6)
+    └── REPORT.pdf                             # Báo cáo học thuật 4–6 trang (TV5 & TV6)
 ```
 
 ---
@@ -135,16 +139,21 @@ Nếu muốn tự kiểm soát từng tiến trình độc lập bằng tay:
 
 ```bash
 # Biên dịch toàn bộ các module vào thư mục bin/
-javac -encoding UTF-8 -d bin src/main/java/com/research/common/*.java src/server/*.java src/load-generator/*.java
+javac -encoding UTF-8 -d bin src/main/java/com/research/common/*.java src/main/java/com/research/server/*.java src/load-generator/*.java
+```
+
+Hoặc biên dịch thông qua Maven:
+```bash
+mvn clean compile
 ```
 
 ### 5.2. Khởi động TCP Server (Process 1)
 
 ```bash
-java -cp bin TCPEchoServer --port 8080
+java -cp bin com.research.server.TCPEchoServer --port 8080
 ```
 
-_Server sẽ mở Socket lắng nghe tại cổng `8080` và khởi chạy luồng nền giám sát CPU._
+_Server sẽ mở Socket lắng nghe tại cổng `8080` (mô hình Blocking Socket + Thread Pool) và khởi chạy luồng nền giám sát CPU._
 
 ### 5.3. Khởi động Load Generator (Process 2)
 
