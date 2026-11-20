@@ -63,23 +63,3 @@ ENV/
 # === Operating System Files ===
 # macOS
 .DS_Store
-.AppleDouble
-.LSOverride
-._*
-
-# Windows
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-$RECYCLE.BIN/
-
-# === Temporary & Archive Files ===
-*.tmp
-*.bak
-*.swp
-*.swo
-*~
-*.zip
-*.tar.gz
-*.rar
-*.7z
