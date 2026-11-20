@@ -1,39 +1,85 @@
-target/
-!.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
-.kotlin
+# =========================================================================
+# .gitignore - TCP Benchmark Research Project
+# Quy chuẩn loại bỏ các file biên dịch, rác IDE, cache và dữ liệu tạm
+# =========================================================================
 
-### IntelliJ IDEA ###
-.idea/modules.xml
-.idea/jarRepositories.xml
-.idea/compiler.xml
-.idea/libraries/
-*.iws
+# === Java & Build Artifacts ===
+target/
+bin/
+out/
+build/
+dist/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+*.log
+hs_err_pid*
+replay_pid*
+
+# Maven
+!.mvn/wrapper/maven-wrapper.jar
+
+# === IDE & Editors ===
+# IntelliJ IDEA
+.idea/
 *.iml
+*.iws
 *.ipr
 
-### Eclipse ###
-.apt_generated
+# Visual Studio Code
+.vscode/
+
+# Eclipse
+.apt_generated/
 .classpath
 .factorypath
 .project
-.settings
+.settings/
 .springBeans
-.sts4-cache
+.sts4-cache/
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
+# NetBeans
+nbproject/private/
+nbbuild/
+nbdist/
+.nb-gradle/
 
-### VS Code ###
-.vscode/
+# === Python (Data Analysis & Visualization) ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+venv/
+.venv/
+env/
+ENV/
+*.egg-info/
 
-### Mac OS ###
+# === Operating System Files ===
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# === Temporary & Archive Files ===
+*.tmp
+*.bak
+*.swp
+*.swo
+*~
+*.zip
+*.tar.gz
+*.rar
+*.7z
