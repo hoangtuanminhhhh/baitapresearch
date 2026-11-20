@@ -37,3 +37,7 @@ build/
 
 ### Mac OS ###
 .DS_Store
+out/
+out-tv2/
+experiments/raw-data/
+experiments/raw_data/
