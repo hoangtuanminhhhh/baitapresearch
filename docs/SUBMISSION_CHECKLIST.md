@@ -54,11 +54,14 @@
 
 ## 4. Hướng dẫn Đóng gói Nộp bài
 
-Sử dụng script đóng gói tự động bằng PowerShell:
-```powershell
-.\package_submission.ps1
+Trước khi nộp bài, đảm bảo repository hoàn toàn sạch các file rác biên dịch và cache. Sử dụng một trong hai cách sau:
+
+**Cách 1: Sử dụng Git Archive (Khuyến nghị)**
+```bash
+git archive --format=zip --output="submission_tcp_server_benchmark.zip" HEAD
 ```
-Script sẽ tự động:
-1. Xác minh đầy đủ cấu trúc thư mục.
-2. Kiểm tra và cảnh báo nếu còn file rác `.class`, `.pyc`, hay file IDE.
-3. Tạo file nén `submission_tcp_server_benchmark.zip` sạch sẽ, sẵn sàng nộp bài.
+
+**Cách 2: Sử dụng PowerShell nén các thư mục quy định**
+```powershell
+Compress-Archive -Path README.md, pom.xml, src, experiments, docs -DestinationPath submission_tcp_server_benchmark.zip -Force
+```
