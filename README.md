@@ -27,21 +27,21 @@ Dự án nghiên cứu thực nghiệm đo lường và đánh giá hiệu năng
 
 Cấu trúc dự án tuân thủ nghiêm ngặt theo đặc tả Mục 5 của đề bài:
 
-```text
+````text
 project-root/
 ├── README.md
 ├── pom.xml
 ├── .gitignore
 ├── src/
-│   ├── server/                                # Thư mục định danh theo đề bài
-│   ├── load-generator/                        # Ứng dụng tạo tải độc lập (TV2)
+│   ├── server/
+│   ├── load-generator/
 │   │   ├── LoadGeneratorApp.java
 │   │   ├── BenchmarkWorker.java
 │   │   └── MetricsCollector.java
 │   └── main/java/com/research/
 │       ├── common/
-│       │   └── Protocol.java                  # Hằng số giao thức chung (TV1 & TV2)
-│       └── server/                            # Mã nguồn TCP Server đa luồng (TV1)
+│       │   └── Protocol.java
+│       └── server/
 │           ├── TCPEchoServer.java
 │           ├── ClientHandler.java
 │           └── CpuMonitor.java
@@ -59,10 +59,8 @@ project-root/
 │       ├── latency_vs_clients.png
 │       └── cpu_vs_clients.png
 └── docs/
-    ├── protocol.md                            # Đặc tả kỹ thuật giao thức Framing (TV1)
-    ├── SUBMISSION_CHECKLIST.md                # Checklist kiểm soát hồ sơ nộp bài (TV6)
-    └── REPORT.pdf                             # Báo cáo học thuật 4–6 trang (TV5 & TV6)
-```
+    ├── protocol.md
+    └── REPORT.pdf
 
 ---
 
@@ -74,7 +72,8 @@ project-root/
    ```bash
    java -version
    javac -version
-   ```
+````
+
 2. **PowerShell:** PowerShell 5.1 (sẵn có trên Windows) hoặc PowerShell 7+.
 3. **Python 3:** Phiên bản 3.8+ phục vụ phân tích số liệu và vẽ biểu đồ:
    ```bash
@@ -108,12 +107,6 @@ _Script sẽ tự động:_
 - Ghi dữ liệu thô vào `experiments/raw-data/benchmark_results.csv` và `cpu_metrics.csv`.
 - Tự động chạy tiếp 4 ca kiểm thử chịu lỗi (TC1 đến TC4).
 
-> **Mẹo tái lập nhanh (Quick Test):** Để chạy nhanh 1 kịch bản kiểm tra (ví dụ 10 clients, 1 lần lặp, đo 5 giây):
->
-> ```powershell
-> powershell -ExecutionPolicy Bypass -File .\experiments\scripts\run_benchmarks.ps1 -Clients 10 -Runs 1 -DurationSec 5 -WarmupSec 2
-> ```
-
 ### Bước 2: Phân tích số liệu và tự động sinh biểu đồ
 
 Chạy script phân tích dữ liệu:
@@ -143,6 +136,7 @@ javac -encoding UTF-8 -d bin src/main/java/com/research/common/*.java src/main/j
 ```
 
 Hoặc biên dịch thông qua Maven:
+
 ```bash
 mvn clean compile
 ```
