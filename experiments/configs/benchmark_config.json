@@ -1,0 +1,94 @@
+{
+  "protocol": {
+    "header_bytes": 4,
+    "request_id_bytes": 8,
+    "max_body_bytes": 65536,
+    "endianness": "big-endian"
+  },
+  "server": {
+    "host": "127.0.0.1",
+    "port": 8080,
+    "auto_start": true,
+    "source_dirs": [
+      "src/server",
+      "src/main/java/com/research/server"
+    ],
+    "common_source_dirs": [
+      "src/main/java/com/research/common"
+    ],
+    "main_class": "",
+    "jvm_args": [
+      "-Duser.language=en",
+      "-Duser.country=US"
+    ],
+    "args": [
+      "--host",
+      "127.0.0.1",
+      "--port",
+      "8080",
+      "--pool",
+      "256"
+    ],
+    "use_tv1_cpu_log": true,
+    "startup_timeout_sec": 10
+  },
+  "load_generator": {
+    "source_dirs": [
+      "src/load-generator",
+      "src/main/java/com/research/loadgenerator"
+    ],
+    "main_class": "",
+    "jvm_args": [
+      "-Duser.language=en",
+      "-Duser.country=US"
+    ]
+  },
+  "benchmark": {
+    "client_levels": [1, 10, 50],
+    "runs_per_level": 3,
+    "warmup_sec": 5,
+    "duration_sec": 20,
+    "payload_bytes": 1024,
+    "cooldown_sec": 3,
+    "cpu_sample_interval_ms": 1000
+  },
+  "validation": {
+    "tc1": {
+      "low_clients": 1,
+      "high_clients": 50,
+      "warmup_sec": 2,
+      "duration_sec": 5,
+      "payload_bytes": 1024,
+      "max_error_rate_percent": 1.0
+    },
+    "tc2": {
+      "payload_sizes": [0, 1, 16, 1024, 4096, 32768, 65528],
+      "concurrent_clients": 10,
+      "requests_per_client": 100,
+      "pipelined_frames": 20,
+      "fragmented_payload_bytes": 1024
+    },
+    "tc3": {
+      "kill_clients": 10,
+      "kill_after_ms": 2000,
+      "half_frame_sockets": 5,
+      "health_check_requests": 20
+    },
+    "tc4": {
+      "oversized_boundary_length": 65537,
+      "huge_length": 999999999,
+      "too_small_lengths": [-1, 0, 4, 7],
+      "socket_timeout_ms": 3000,
+      "health_check_requests": 20
+    }
+  },
+  "output": {
+    "raw_data_dir": "experiments/raw-data",
+    "master_csv": "benchmark_results.csv",
+    "cpu_summary_csv": "cpu_metrics.csv",
+    "validation_csv": "validation_results.csv",
+    "validation_json": "validation_report.json",
+    "metadata_json": "environment_metadata.json",
+    "build_dir": "target/tv3-build"
+  }
+}
