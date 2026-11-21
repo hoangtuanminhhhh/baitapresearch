@@ -1,0 +1,12 @@
+{
+  "run_id": 3,
+  "clients": 50,
+  "duration_sec": 20,
+  "payload_bytes": 1024,
+  "total_success": 470724,
+  "total_errors": 0,
+  "throughput_req_per_sec": 23536.20,
+  "avg_latency_ms": 2.1393,
+  "p95_latency_ms": 17.0027,
+  "error_rate_percent": 0.00
+}

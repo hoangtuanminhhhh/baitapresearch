@@ -1,0 +1,40 @@
+{
+    "generated_at_utc":  "2026-11-21T15:40:29Z",
+    "target_host":  "127.0.0.1",
+    "target_port":  8080,
+    "server_pid":  32044,
+    "total_tests":  4,
+    "passed":  4,
+    "failed":  0,
+    "all_passed":  true,
+    "results":  [
+                    {
+                        "test_id":  "TC1",
+                        "test_name":  "1 Client vs 50 Clients",
+                        "status":  "PASS",
+                        "duration_ms":  93,
+                        "details":  "Source=benchmark_results.csv; 1c(runs=3): tp=15390.68 req/s, avg=0.0665ms, p95=0.1322ms, err=0.00%; 50c(runs=3): tp=37069.72 req/s, avg=1.6601ms, p95=11.5078ms, err=0.00%"
+                    },
+                    {
+                        "test_id":  "TC2",
+                        "test_name":  "requestId \u0026 Payload Integrity",
+                        "status":  "PASS",
+                        "duration_ms":  257,
+                        "details":  "Verified 1034/1034 frames (sizes=7, edgeIds=6, frag=1, pipeline=20, concurrent=10x100); mismatches=0; errors=0"
+                    },
+                    {
+                        "test_id":  "TC3",
+                        "test_name":  "Abrupt Disconnect (Kill Task)",
+                        "status":  "PASS",
+                        "duration_ms":  24376,
+                        "details":  "KilledClientActive=True; Sent 5/5 half-frame TCP RST sockets; KillEarly=exit=0; ServerAlive=True; HealthCheck passed 20/20 valid 1024B frames"
+                    },
+                    {
+                        "test_id":  "TC4",
+                        "test_name":  "Invalid / Oversized Frame",
+                        "status":  "PASS",
+                        "duration_ms":  3290,
+                        "details":  "Rejected all 7 invalid probes (boundary=65537, huge=999999999, too_small=-1,0,4,7, truncated=2B); TestInvalidFlag=exit=0; ServerAlive=True; HealthCheck passed 20/20 valid 1024B frames"
+                    }
+                ]
+}
