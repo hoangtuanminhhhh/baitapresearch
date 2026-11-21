@@ -15,17 +15,14 @@ Dự án nghiên cứu thực nghiệm đo lường và đánh giá hiệu năng
 - **Mô hình dịch vụ:** Request/Response tối giản theo dạng **Echo Benchmark**.
 - **Kiến trúc mạng:** TCP Server và Load Generator chạy ở hai tiến trình (process) độc lập; mỗi Client logic duy trì một kết nối TCP riêng biệt.
 - **Cơ chế Framing:** Giao thức phân tách message rõ ràng (Length-prefixing) để giải quyết triệt để tính chất dòng byte (stream-oriented) của TCP (chống dính gói và xé gói).
-- **Quy chuẩn đo lường:**
-  - Kích thước payload cố định: `1024 bytes` (1 KB).
-  - Thời gian Warm-up: `5 giây` (bỏ qua số liệu giai đoạn này để JIT và JVM ổn định).
-  - Thời gian đo chính thức: `20 giây`.
-  - Số lượt lặp lại: Ít nhất `3 lần` cho mỗi kịch bản (1, 10, 50 Clients) để tính giá trị trung bình (Mean) và độ lệch chuẩn (StdDev).
+- **Giá trị mặc định của Load Generator:** Payload `1024 bytes`, warm-up `5 giây`, thời gian đo `20 giây`. Đây là mặc định chương trình, không phải bằng chứng rằng các lần chạy benchmark đã được thực hiện.
+- **Kịch bản nghiên cứu dự kiến:** 1, 10, 50 clients; repository hiện chưa có dữ liệu chạy lặp để tính Mean/StdDev.
 
 ---
 
-## 2. Cấu Trúc Repository
+## 2. Cấu Trúc Repository Hiện Có
 
-Cấu trúc dự án tuân thủ nghiêm ngặt theo đặc tả Mục 5 của đề bài:
+Cấu trúc dự án:
 
 ````text
 project-root/
@@ -47,20 +44,11 @@ project-root/
 │           └── CpuMonitor.java
 ├── experiments/
 │   ├── configs/
-│   │   └── benchmark_config.json
-│   ├── scripts/
-│   │   ├── run_benchmarks.ps1
-│   │   └── run_validation_tests.ps1
 │   ├── raw-data/
-│   ├── analysis/
-│   │   └── analyze_data.py
 │   └── figures/
-│       ├── throughput_vs_clients.png
-│       ├── latency_vs_clients.png
-│       └── cpu_vs_clients.png
 └── docs/
     ├── protocol.md
-    └── REPORT.pdf
+
 
 ---
 
@@ -68,14 +56,14 @@ project-root/
 
 Để biên dịch và chạy trọn vẹn dự án, máy tính cần cài đặt:
 
-1. **Java Development Kit (JDK):** JDK 17+ (khuyến nghị **JDK 21 LTS**). Kiểm tra bằng:
+1. **Java Development Kit (JDK):** `pom.xml` khai báo compiler source/target 26; dùng JDK tương thích mức này để biên dịch. Phiên bản JVM thực tế cần được ghi nhận riêng khi chạy benchmark. Kiểm tra bằng:
    ```bash
    java -version
    javac -version
 ````
 
 2. **PowerShell:** PowerShell 5.1 (sẵn có trên Windows) hoặc PowerShell 7+.
-3. **Python 3:** Phiên bản 3.8+ phục vụ phân tích số liệu và vẽ biểu đồ:
+3. **Python 3:** Cần nếu muốn chạy script tạo PDF. Repository hiện chưa có script phân tích benchmark hoặc vẽ biểu đồ:
    ```bash
    python --version
    pip install pandas numpy matplotlib seaborn
@@ -87,40 +75,11 @@ project-root/
 
 ---
 
-## 4. Tái Tạo Thực Nghiệm Nhanh (1–2 Câu Lệnh)
+## 4. Trạng Thái Tái Tạo Thực Nghiệm
 
-Nhóm đã cung cấp kịch bản tự động hóa hoàn toàn quy trình biên dịch, chạy tải, thu thập số liệu và vẽ đồ thị.
+Repository hiện chưa có script tự động chạy ma trận benchmark, validation, phân tích dữ liệu hoặc vẽ biểu đồ. Các thư mục tương ứng hiện chỉ là placeholder; chưa có dữ liệu thực nghiệm được lưu.
 
-### Bước 1: Chạy tự động ma trận đo lường & kiểm thử chịu lỗi
-
-Mở terminal PowerShell tại thư mục gốc của dự án và chạy:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\experiments\scripts\run_benchmarks.ps1
-```
-
-_Script sẽ tự động:_
-
-- Biên dịch mã nguồn Java.
-- Khởi động `TCPEchoServer` trên cổng `8080`.
-- Chạy ma trận 3 mức tải $\times$ 3 lần lặp (1, 10, 50 Clients; mỗi lần 5s warm-up + 20s đo chính thức).
-- Ghi dữ liệu thô vào `experiments/raw-data/benchmark_results.csv` và `cpu_metrics.csv`.
-- Tự động chạy tiếp 4 ca kiểm thử chịu lỗi (TC1 đến TC4).
-
-### Bước 2: Phân tích số liệu và tự động sinh biểu đồ
-
-Chạy script phân tích dữ liệu:
-
-```bash
-python experiments/analysis/analyze_data.py
-```
-
-_Script sẽ tính toán Mean, StdDev và tự động xuất ra thư mục `experiments/figures/`:_
-
-1. `throughput_vs_clients.png` (Thông lượng theo số Client)
-2. `latency_vs_clients.png` (Độ trễ trung bình & đuôi trễ p95)
-3. `cpu_vs_clients.png` (Mức tiêu thụ CPU của Server)
-4. Bảng tổng hợp số liệu kiểm chứng: `experiments/analysis/summary_metrics.csv`
+Có thể chạy thủ công một kịch bản theo Mục 5 bên dưới. Việc này không tự động lặp ma trận 1/10/50 clients, tổng hợp thống kê hoặc sinh biểu đồ.
 
 ---
 
@@ -187,16 +146,7 @@ java -cp bin LoadGeneratorApp --host 127.0.0.1 --port 8080 --clients 10 --warmup
 
 ## 6. Bộ Kiểm Thử Chức Năng & Chịu Lỗi (Validation Tests)
 
-Dự án tích hợp sẵn bộ kiểm chứng tự động cho 4 ca thử nghiệm bắt buộc (theo Mục 4 Đề bài):
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\experiments\scripts\run_validation_tests.ps1
-```
-
-- **TC1 (Tải đơn vs Tải cao):** Đo lường tính ổn định và so sánh trực tiếp hiệu năng giữa 1 Client và 50 Clients đồng thời.
-- **TC2 (Kiểm chứng tính toàn vẹn dữ liệu):** Đối chiếu chính xác từng byte của `requestId` và `payload` phản hồi so với request gửi đi qua các dải kích thước (0B, 16B, 1KB, 32KB, 64KB) và khi xảy ra phân mảnh luồng TCP.
-- **TC3 (Chịu lỗi ngắt kết nối đột ngột):** Khi tải đang chạy tối đa (50 clients), cưỡng bức tắt tiến trình Client (`kill /F` hoặc ngắt nửa frame TCP RST). Kiểm tra xác nhận Server vẫn tiếp tục sống và phản hồi bình thường cho các kết nối mới.
-- **TC4 (Xử lý dữ liệu sai / vượt ngưỡng):** Gửi gói tin có `length > 64KB` (vượt `MAX_BODY`) hoặc frame bị rác/cắt cụt phần header. Xác nhận Server đóng kết nối vi phạm an toàn mà không bị crash hoặc treo bộ nhớ.
+Repository chưa có bộ kiểm thử tự động TC1–TC4. Load Generator có tùy chọn `--test-invalid` để gửi length `999999999` và `--kill-early` để worker đóng socket sau 5 request; tùy chọn thứ hai không kill tiến trình Load Generator hoặc chủ động tạo TCP RST. Benchmark bình thường so sánh `requestId` và payload đã cấu hình; chưa có test matrix các kích thước biên hoặc ép phân mảnh. Với `MAX_BODY = 65536` bao gồm 8 byte request ID, payload tối đa hợp lệ là 65528 bytes (payload 65536 bytes bị từ chối).
 
 ---
 
@@ -222,10 +172,10 @@ powershell -ExecutionPolicy Bypass -File .\experiments\scripts\run_validation_te
 ```
 
 - **Header (4 bytes):** Độ dài $N$ của phần thân body (bằng $8 + \text{Payload length}$).
-- **Request ID (8 bytes):** Mã định danh tuần tự của request để đối chiếu tính toàn vẹn.
+- **Request ID (8 bytes):** Giá trị tăng dần dùng chung từ `AtomicLong`, dùng đối chiếu response với request.
 - **Payload (1024 bytes):** Mảng byte dữ liệu nhị phân.
 - **Tổng kích thước 1 Frame chuẩn:** $4 + 8 + 1024 = 1036 \text{ bytes}$.
-- **Quy tắc giải mã:** Phía nhận luôn đọc chính xác 4 byte header trước bằng `readFully()`. Nếu $N > 65536$ bytes (`MAX_BODY`), kết nối bị ngắt ngay lập tức để bảo vệ Server.
+- **Quy tắc giải mã:** Server đọc header bằng cách ghép 4 byte (byte đầu dùng `read()`, ba byte còn lại dùng `readUnsignedByte()`), kiểm tra $8 \le N \le 65536$, rồi dùng `readFully()` đọc body. Payload tối đa hợp lệ là 65528 bytes do 8 bytes body dùng cho request ID.
 
 ---
 
@@ -234,14 +184,14 @@ powershell -ExecutionPolicy Bypass -File .\experiments\scripts\run_validation_te
 Dữ liệu RTT (Round Trip Time) được bấm giờ bằng đồng hồ độ phân giải nano-giây: `System.nanoTime()`.
 
 - **Throughput (req/s):**
-  $$\text{Throughput} = \frac{\text{Tổng số request phản hồi thành công}}{\text{Thời gian đo chính thức (20 giây)}}$$
+  $$\text{Throughput} = \frac{\text{Số request thành công được ghi nhận}}{\text{durationSec}}$$
 - **Average Latency (ms):**
   $$\text{Avg Latency} = \frac{1}{K} \sum_{i=1}^{K} \text{RTT}_i$$
 - **p95 Tail Latency (ms):**
   Sắp xếp danh sách RTT tăng dần, giá trị p95 là phần tử tại vị trí: $\lceil 0.95 \times K \rceil - 1$.
 - **Error Rate (%):**
-  $$\text{Error Rate} = \frac{\text{Số request lỗi hoặc timeout}}{\text{Tổng số request phát đi}} \times 100$$
+  $$\text{Error Rate} = \frac{\text{totalErrors}}{\text{totalSuccess} + \text{totalErrors}} \times 100$$
 - **CPU Usage (%):**
-  Lấy từ `OperatingSystemMXBean.getProcessCpuLoad() * 100` ghi nhận định kỳ mỗi giây một lần.
+  `CpuMonitor` tính phần trăm một lõi từ chênh lệch `getProcessCpuTime()` theo thời gian thực; đồng thời ghi mức chuẩn hóa theo số lõi và `getCpuLoad()` cho toàn hệ thống. Chu kỳ mặc định là 1 giây.
 
 ---
