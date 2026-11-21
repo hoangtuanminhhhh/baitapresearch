@@ -362,6 +362,29 @@ function Get-Percentile {
     return [double]$sorted[$idx]
 }
 
+function Read-SharedCsvLines {
+    param([Parameter(Mandatory = $true)][string]$Path)
+    $lines = New-Object System.Collections.Generic.List[string]
+    if (-not (Test-Path -LiteralPath $Path)) {
+        return @()
+    }
+    $fs = $null
+    $sr = $null
+    try {
+        $fs = New-Object System.IO.FileStream($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+        $sr = New-Object System.IO.StreamReader($fs, [System.Text.Encoding]::UTF8)
+        while ($null -ne ($line = $sr.ReadLine())) {
+            if (-not [string]::IsNullOrWhiteSpace($line)) {
+                $lines.Add($line)
+            }
+        }
+    } finally {
+        if ($null -ne $sr) { $sr.Dispose() }
+        elseif ($null -ne $fs) { $fs.Dispose() }
+    }
+    return $lines.ToArray()
+}
+
 # =========================================================================
 # Initialization & Config Resolution
 # =========================================================================
@@ -453,11 +476,17 @@ if ($ServerArgs.Count -gt 0) {
     $effectiveServerArgs = @($config.server.args)
 }
 
+$useTv1CpuLog = $true
+if ($null -ne $config.server.PSObject.Properties["use_tv1_cpu_log"]) {
+    $useTv1CpuLog = [bool]$config.server.use_tv1_cpu_log
+}
+
 if ($DryRun) {
     Write-Host "================ DRY RUN CONFIGURATION ================"
     Write-Host "Repo Root      : $repoRoot"
     Write-Host "Config Path    : $ConfigPath"
     Write-Host "Target Server  : ${targetHost}:${targetPort} (UseExternalServer=$UseExternalServer)"
+    Write-Host "Server Args    : $($effectiveServerArgs -join ' ') (use_tv1_cpu_log=$useTv1CpuLog)"
     Write-Host "Output Dir     : $OutputDir"
     Write-Host "Build Dir      : $buildRoot"
     Write-Host ""
@@ -537,6 +566,8 @@ if (-not $SkipBenchmarks) {
     Get-ChildItem -LiteralPath $runsDir -Filter "c*_run*.csv" -File -ErrorAction SilentlyContinue | Remove-Item -Force
     Get-ChildItem -LiteralPath $runsDir -Filter "c*_run*.json" -File -ErrorAction SilentlyContinue | Remove-Item -Force
     Get-ChildItem -LiteralPath $cpuDir -Filter "cpu_c*_run*.csv" -File -ErrorAction SilentlyContinue | Remove-Item -Force
+    $oldMxBean = Join-Path $cpuDir "server_cpu_mxbean.csv"
+    if (Test-Path -LiteralPath $oldMxBean) { Remove-Item -LiteralPath $oldMxBean -Force }
 }
 
 # =========================================================================
@@ -545,6 +576,7 @@ if (-not $SkipBenchmarks) {
 $serverProcess = $null
 $startedServer = $false
 $monitoredServerPid = 0
+$tv1CpuLogPath = ""
 $benchmarkFailed = $false
 $validationExitCode = 0
 $inv = [System.Globalization.CultureInfo]::InvariantCulture
@@ -565,11 +597,37 @@ try {
             throw "Port $targetPort is already in use (PID=$existingPid). Stop it or pass -UseExternalServer."
         }
 
+        $serverLaunchArgs = @()
+        if ($effectiveServerArgs.Count -gt 0) {
+            $serverLaunchArgs += $effectiveServerArgs
+        }
+        if (-not ($serverLaunchArgs -contains "--host")) {
+            $serverLaunchArgs += @("--host", $targetHost)
+        }
+        if (-not ($serverLaunchArgs -contains "--port")) {
+            $serverLaunchArgs += @("--port", "$targetPort")
+        }
+        if ($useTv1CpuLog -and -not $SkipBenchmarks) {
+            if (-not ($serverLaunchArgs -contains "--cpu-log")) {
+                $tv1CpuLogPath = Join-Path $cpuDir "server_cpu_mxbean.csv"
+                if (Test-Path -LiteralPath $tv1CpuLogPath) { Remove-Item -LiteralPath $tv1CpuLogPath -Force }
+                $serverLaunchArgs += @("--cpu-log", $tv1CpuLogPath)
+            } else {
+                $idxLog = [Array]::IndexOf($serverLaunchArgs, "--cpu-log")
+                if ($idxLog -ge 0 -and ($idxLog + 1) -lt $serverLaunchArgs.Count) {
+                    $tv1CpuLogPath = $serverLaunchArgs[$idxLog + 1]
+                }
+            }
+            if (-not ($serverLaunchArgs -contains "--cpu-interval-ms")) {
+                $serverLaunchArgs += @("--cpu-interval-ms", "$cpuIntervalMs")
+            }
+        }
+
         $javaServerArgs = @()
         $javaServerArgs += $serverJvmArgs
         $javaServerArgs += @("-cp", $serverCp, $serverMainClass)
-        if ($effectiveServerArgs.Count -gt 0) {
-            $javaServerArgs += $effectiveServerArgs
+        if ($serverLaunchArgs.Count -gt 0) {
+            $javaServerArgs += $serverLaunchArgs
         }
 
         $javaServerArgString = Join-Win32Args -ArgsList $javaServerArgs
@@ -593,7 +651,7 @@ try {
         $masterLines.Add("run_id,clients,duration_sec,payload_bytes,total_success,total_errors,throughput_req_s,avg_latency_ms,p95_latency_ms,error_rate_percent")
 
         $cpuSummaryLines = New-Object System.Collections.Generic.List[string]
-        $cpuSummaryLines.Add("run_id,clients,samples,avg_cpu_percent,max_cpu_percent,min_cpu_percent,p95_cpu_percent,avg_working_set_mb")
+        $cpuSummaryLines.Add("run_id,clients,samples,avg_cpu_percent,max_cpu_percent,min_cpu_percent,p95_cpu_percent,avg_cpu_one_core_percent,avg_system_cpu_percent,avg_working_set_mb")
 
         $logicalCores = [Environment]::ProcessorCount
         $totalSteps = $resolvedClients.Count * $Runs
@@ -646,11 +704,11 @@ try {
                     }
                 }
 
-                # Sample server CPU during active measurement window
-                $cpuSamples = New-Object System.Collections.Generic.List[double]
+                # Sample server WorkingSet64 and fallback CPU during active measurement window
+                $measureStartEpochMs = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+                $psCpuSamples = New-Object System.Collections.Generic.List[double]
                 $wsSamples = New-Object System.Collections.Generic.List[double]
-                $cpuDetailLines = New-Object System.Collections.Generic.List[string]
-                $cpuDetailLines.Add("sample_index,timestamp_utc,elapsed_sec,cpu_percent,working_set_mb")
+                $psCpuDetailRows = New-Object System.Collections.Generic.List[object]
 
                 $monProc = $null
                 if ($monitoredServerPid -gt 0) {
@@ -662,7 +720,6 @@ try {
                     $prevCpuMs = $monProc.TotalProcessorTime.TotalMilliseconds
                     $intervalSw = [System.Diagnostics.Stopwatch]::StartNew()
                     $measureSw = [System.Diagnostics.Stopwatch]::StartNew()
-                    $sampleIdx = 0
 
                     while (-not $lgProc.HasExited -and $measureSw.Elapsed.TotalSeconds -lt $DurationSec) {
                         $remainingMs = [int](($DurationSec * 1000.0) - $measureSw.Elapsed.TotalMilliseconds)
@@ -685,24 +742,23 @@ try {
                             $cpuPct = [Math]::Max(0.0, [Math]::Min(100.0, $cpuPct))
                             $wsMb = $monProc.WorkingSet64 / 1MB
 
-                            $sampleIdx++
-                            $cpuSamples.Add($cpuPct)
+                            $psCpuSamples.Add($cpuPct)
                             $wsSamples.Add($wsMb)
 
-                            $ts = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-                            $cpuDetailLines.Add([string]::Format(
-                                $inv,
-                                "{0},{1},{2:F3},{3:F2},{4:F2}",
-                                $sampleIdx, $ts, $measureSw.Elapsed.TotalSeconds, $cpuPct, $wsMb
-                            ))
+                            $psCpuDetailRows.Add([PSCustomObject]@{
+                                epoch_ms     = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+                                elapsed_sec  = $measureSw.Elapsed.TotalSeconds
+                                cpu_pct      = $cpuPct
+                                one_core_pct = ($cpuPct * $logicalCores)
+                                ws_mb        = $wsMb
+                            })
                         }
                         $prevCpuMs = $nowCpuMs
                     }
                 } else {
-                    Write-Warning "Server PID unavailable; skipping CPU sampling for c=${clientCount}, run=${runId}."
+                    Write-Warning "Server PID unavailable; skipping fallback CPU/memory sampling for c=${clientCount}, run=${runId}."
                 }
-
-                Write-Utf8NoBom -Path $runCpuCsvPath -Content (($cpuDetailLines.ToArray() -join "`n") + "`n")
+                $measureEndEpochMs = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
 
                 $waitMs = ($DurationSec + 30) * 1000
                 if (-not $lgProc.WaitForExit($waitMs)) {
@@ -730,28 +786,133 @@ try {
                 $dataRow = $runCsvLines[-1].Trim()
                 $masterLines.Add($dataRow)
 
-                if ($cpuSamples.Count -gt 0) {
-                    $cpuArr = $cpuSamples.ToArray()
-                    $wsArr = $wsSamples.ToArray()
-                    $sumCpu = 0.0
-                    foreach ($v in $cpuArr) { $sumCpu += $v }
+                $avgWs = 0.0
+                if ($wsSamples.Count -gt 0) {
+                    $sumWs = 0.0
+                    foreach ($w in $wsSamples) { $sumWs += $w }
+                    $avgWs = $sumWs / $wsSamples.Count
+                }
+
+                # Prefer TV1 CpuMonitor (--cpu-log) samples filtered to this measurement window
+                $matchedTv1Rows = New-Object System.Collections.Generic.List[object]
+                if (-not [string]::IsNullOrWhiteSpace($tv1CpuLogPath)) {
+                    Start-Sleep -Milliseconds 200
+                    $mxLines = @(Read-SharedCsvLines -Path $tv1CpuLogPath)
+                    $minDeltaMs = [Math]::Max(50, [Math]::Min(200, [int]($cpuIntervalMs * 0.5)))
+                    $prevMxEp = 0L
+                    if ($mxLines.Count -gt 1) {
+                        for ($li = 1; $li -lt $mxLines.Count; $li++) {
+                            $parts = $mxLines[$li].Split(',')
+                            if ($parts.Length -ge 4) {
+                                $ep = 0L
+                                if ([long]::TryParse($parts[0].Trim(), [ref]$ep)) {
+                                    $isCatchup = ($prevMxEp -gt 0 -and ($ep - $prevMxEp) -lt $minDeltaMs)
+                                    $prevMxEp = $ep
+                                    if (-not $isCatchup -and $ep -ge ($measureStartEpochMs - 200) -and $ep -le ($measureEndEpochMs + 200)) {
+                                        $oneCore = 0.0
+                                        $normPct = 0.0
+                                        if ([double]::TryParse($parts[2].Trim(), [System.Globalization.NumberStyles]::Float, $inv, [ref]$oneCore) -and
+                                            [double]::TryParse($parts[3].Trim(), [System.Globalization.NumberStyles]::Float, $inv, [ref]$normPct)) {
+                                            $sysVal = $null
+                                            if ($parts.Length -ge 5 -and -not [string]::IsNullOrWhiteSpace($parts[4])) {
+                                                $tmpSys = 0.0
+                                                if ([double]::TryParse($parts[4].Trim(), [System.Globalization.NumberStyles]::Float, $inv, [ref]$tmpSys)) {
+                                                    $sysVal = $tmpSys
+                                                }
+                                            }
+                                            $matchedTv1Rows.Add([PSCustomObject]@{
+                                                epoch_ms     = $ep
+                                                elapsed_sec  = (($ep - $measureStartEpochMs) / 1000.0)
+                                                cpu_pct      = $normPct
+                                                one_core_pct = $oneCore
+                                                sys_pct      = $sysVal
+                                            })
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                $cpuDetailLines = New-Object System.Collections.Generic.List[string]
+                $cpuDetailLines.Add("sample_index,epoch_ms,elapsed_sec,cpu_percent,cpu_pct_of_one_core,system_cpu_pct,working_set_mb")
+
+                if ($matchedTv1Rows.Count -gt 0) {
+                    $normList = New-Object System.Collections.Generic.List[double]
+                    $oneCoreList = New-Object System.Collections.Generic.List[double]
+                    $sysList = New-Object System.Collections.Generic.List[double]
+
+                    for ($si = 0; $si -lt $matchedTv1Rows.Count; $si++) {
+                        $row = $matchedTv1Rows[$si]
+                        $normList.Add([double]$row.cpu_pct)
+                        $oneCoreList.Add([double]$row.one_core_pct)
+                        $sysStr = ""
+                        if ($null -ne $row.sys_pct) {
+                            $sysList.Add([double]$row.sys_pct)
+                            $sysStr = [string]::Format($inv, "{0:F2}", [double]$row.sys_pct)
+                        }
+                        $rowWs = $avgWs
+                        if ($wsSamples.Count -gt 0) {
+                            $wsIdx = [Math]::Min($si, $wsSamples.Count - 1)
+                            $rowWs = [double]$wsSamples[$wsIdx]
+                        }
+                        $cpuDetailLines.Add([string]::Format(
+                            $inv,
+                            "{0},{1},{2:F3},{3:F2},{4:F2},{5},{6:F2}",
+                            ($si + 1), $row.epoch_ms, $row.elapsed_sec, $row.cpu_pct, $row.one_core_pct, $sysStr, $rowWs
+                        ))
+                    }
+
+                    $cpuArr = $normList.ToArray()
+                    $sumCpu = 0.0; foreach ($v in $cpuArr) { $sumCpu += $v }
                     $avgCpu = $sumCpu / $cpuArr.Count
                     $maxCpu = ($cpuArr | Measure-Object -Maximum).Maximum
                     $minCpu = ($cpuArr | Measure-Object -Minimum).Minimum
                     $p95Cpu = Get-Percentile -Values $cpuArr -Percentile 95.0
 
-                    $sumWs = 0.0
-                    foreach ($w in $wsArr) { $sumWs += $w }
-                    $avgWs = $sumWs / $wsArr.Count
+                    $sumOne = 0.0; foreach ($v in $oneCoreList) { $sumOne += $v }
+                    $avgOne = $sumOne / $oneCoreList.Count
+
+                    $avgSys = 0.0
+                    if ($sysList.Count -gt 0) {
+                        $sumSys = 0.0; foreach ($v in $sysList) { $sumSys += $v }
+                        $avgSys = $sumSys / $sysList.Count
+                    }
 
                     $cpuSummaryLines.Add([string]::Format(
                         $inv,
-                        "{0},{1},{2},{3:F2},{4:F2},{5:F2},{6:F2},{7:F2}",
-                        $runId, $clientCount, $cpuArr.Count, $avgCpu, $maxCpu, $minCpu, $p95Cpu, $avgWs
+                        "{0},{1},{2},{3:F2},{4:F2},{5:F2},{6:F2},{7:F2},{8:F2},{9:F2}",
+                        $runId, $clientCount, $cpuArr.Count, $avgCpu, $maxCpu, $minCpu, $p95Cpu, $avgOne, $avgSys, $avgWs
+                    ))
+                } elseif ($psCpuSamples.Count -gt 0) {
+                    for ($si = 0; $si -lt $psCpuDetailRows.Count; $si++) {
+                        $row = $psCpuDetailRows[$si]
+                        $cpuDetailLines.Add([string]::Format(
+                            $inv,
+                            "{0},{1},{2:F3},{3:F2},{4:F2},,{5:F2}",
+                            ($si + 1), $row.epoch_ms, $row.elapsed_sec, $row.cpu_pct, $row.one_core_pct, $row.ws_mb
+                        ))
+                    }
+
+                    $cpuArr = $psCpuSamples.ToArray()
+                    $sumCpu = 0.0; foreach ($v in $cpuArr) { $sumCpu += $v }
+                    $avgCpu = $sumCpu / $cpuArr.Count
+                    $maxCpu = ($cpuArr | Measure-Object -Maximum).Maximum
+                    $minCpu = ($cpuArr | Measure-Object -Minimum).Minimum
+                    $p95Cpu = Get-Percentile -Values $cpuArr -Percentile 95.0
+                    $avgOne = $avgCpu * $logicalCores
+
+                    $cpuSummaryLines.Add([string]::Format(
+                        $inv,
+                        "{0},{1},{2},{3:F2},{4:F2},{5:F2},{6:F2},{7:F2},0.00,{8:F2}",
+                        $runId, $clientCount, $cpuArr.Count, $avgCpu, $maxCpu, $minCpu, $p95Cpu, $avgOne, $avgWs
                     ))
                 } else {
-                    $cpuSummaryLines.Add([string]::Format($inv, "{0},{1},0,0.00,0.00,0.00,0.00,0.00", $runId, $clientCount))
+                    $cpuSummaryLines.Add([string]::Format($inv, "{0},{1},0,0.00,0.00,0.00,0.00,0.00,0.00,0.00", $runId, $clientCount))
                 }
+
+                Write-Utf8NoBom -Path $runCpuCsvPath -Content (($cpuDetailLines.ToArray() -join "`n") + "`n")
 
                 Write-Host "[RUN COMPLETE] $dataRow"
 

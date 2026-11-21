@@ -21,7 +21,15 @@
       "-Duser.language=en",
       "-Duser.country=US"
     ],
-    "args": [],
+    "args": [
+      "--host",
+      "127.0.0.1",
+      "--port",
+      "8080",
+      "--pool",
+      "256"
+    ],
+    "use_tv1_cpu_log": true,
     "startup_timeout_sec": 10
   },
   "load_generator": {

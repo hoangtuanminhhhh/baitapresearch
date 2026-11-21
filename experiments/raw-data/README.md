@@ -18,6 +18,7 @@ experiments/raw-data/
 │   ├── c1_run1.json             # Individual run JSON from LoadGeneratorApp
 │   └── ... (c1_run1..3, c10_run1..3, c50_run1..3)
 ├── cpu/
+│   ├── server_cpu_mxbean.csv    # Continuous TV1 CpuMonitor (--cpu-log) output across session
 │   ├── cpu_c1_run1.csv          # Per-second server CPU (%) & Working Set samples during measurement
 │   └── ...
 └── logs/
@@ -42,16 +43,18 @@ experiments/raw-data/
 | `p95_latency_ms` | float | 95th percentile tail latency (ms) |
 | `error_rate_percent` | float | Error percentage (`total_errors / total_requests * 100`) |
 
-### 2. `cpu_metrics.csv` (Server CPU summary per run)
+### 2. `cpu_metrics.csv` (Server CPU summary per run — sourced from TV1 `CpuMonitor`, with PowerShell fallback)
 | Column | Type | Description |
 |---|---|---|
 | `run_id` | int | Repetition index (`1`, `2`, `3`) |
 | `clients` | int | Concurrent client connections (`1`, `10`, `50`) |
 | `samples` | int | Number of CPU samples collected during measurement |
-| `avg_cpu_percent` | float | Mean server CPU utilization (`0..100%` across logical cores) |
-| `max_cpu_percent` | float | Peak sampled server CPU utilization (`%`) |
-| `min_cpu_percent` | float | Minimum sampled server CPU utilization (`%`) |
-| `p95_cpu_percent` | float | 95th percentile sampled server CPU utilization (`%`) |
+| `avg_cpu_percent` | float | Mean normalized server CPU utilization (`0..100%` across logical cores) |
+| `max_cpu_percent` | float | Peak sampled normalized server CPU utilization (`%`) |
+| `min_cpu_percent` | float | Minimum sampled normalized server CPU utilization (`%`) |
+| `p95_cpu_percent` | float | 95th percentile sampled normalized server CPU utilization (`%`) |
+| `avg_cpu_one_core_percent` | float | Mean server CPU utilization in single-core units (`cpu_pct_of_one_core`, can exceed `100%`) |
+| `avg_system_cpu_percent` | float | Mean whole-machine CPU utilization during the run (`system_cpu_pct`, `0.00` in external fallback) |
 | `avg_working_set_mb` | float | Mean server process working set memory (`MB`) |
 
 ### 3. `validation_results.csv` (Mandatory Test Cases)
