@@ -1,0 +1,2 @@
+run_id,clients,duration_sec,payload_bytes,total_success,total_errors,throughput_req_s,avg_latency_ms,p95_latency_ms,error_rate_percent
+1,10,20,1024,1007550,0,50377.50,0.1976,0.2717,0.00

@@ -1,0 +1,5 @@
+test_id,test_name,status,duration_ms,details
+"TC1","1 Client vs 50 Clients","PASS",93,"Source=benchmark_results.csv; 1c(runs=3): tp=15390.68 req/s, avg=0.0665ms, p95=0.1322ms, err=0.00%; 50c(runs=3): tp=37069.72 req/s, avg=1.6601ms, p95=11.5078ms, err=0.00%"
+"TC2","requestId & Payload Integrity","PASS",257,"Verified 1034/1034 frames (sizes=7, edgeIds=6, frag=1, pipeline=20, concurrent=10x100); mismatches=0; errors=0"
+"TC3","Abrupt Disconnect (Kill Task)","PASS",24376,"KilledClientActive=True; Sent 5/5 half-frame TCP RST sockets; KillEarly=exit=0; ServerAlive=True; HealthCheck passed 20/20 valid 1024B frames"
+"TC4","Invalid / Oversized Frame","PASS",3290,"Rejected all 7 invalid probes (boundary=65537, huge=999999999, too_small=-1,0,4,7, truncated=2B); TestInvalidFlag=exit=0; ServerAlive=True; HealthCheck passed 20/20 valid 1024B frames"

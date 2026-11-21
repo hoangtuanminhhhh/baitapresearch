@@ -1,0 +1,28 @@
+{
+    "generated_at_utc":  "2026-11-21T15:40:00Z",
+    "hostname":  "LAPTOP-VASE5T1I",
+    "os":  "Microsoft Windows 11 Home Single Language (10.0.26300)",
+    "powershell_version":  "5.1.26100.9818",
+    "java_version":  "openjdk version \"26.0.2.1\" 2026-08-18",
+    "cpu_name":  "12th Gen Intel(R) Core(TM) i5-12450H",
+    "physical_cores":  8,
+    "logical_processors":  12,
+    "ram_gb":  15.7,
+    "target_host":  "127.0.0.1",
+    "target_port":  8080,
+    "external_server_mode":  false,
+    "server_main_class":  "com.research.server.TCPEchoServer",
+    "loadgen_main_class":  "LoadGeneratorApp",
+    "benchmark_parameters":  {
+                                 "client_levels":  [
+                                                       1,
+                                                       10,
+                                                       50
+                                                   ],
+                                 "runs_per_level":  3,
+                                 "warmup_sec":  5,
+                                 "duration_sec":  20,
+                                 "payload_bytes":  1024,
+                                 "cooldown_sec":  3
+                             }
+}
