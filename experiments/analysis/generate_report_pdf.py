@@ -1,7 +1,7 @@
 """
 Script tu dong tao file docs/REPORT.pdf chuan hoc thuat (do dai 5 trang)
 Bao gom: Trang bia, Abstract, Muc 1, 2, 3, 4, 5, 6, 7, 8.
-Su dung fpdf2 va font Arial he thong Windows ho tro day du Tieng Viet.
+Su dung fpdf2 va font Arial, Consolas he thong Windows ho tro day du Tieng Viet.
 """
 
 import os
@@ -62,14 +62,11 @@ def build_pdf():
     pdf.cell(0, 7, "Mô hình: Blocking Socket kết hợp Fixed Thread Pool trên nền Java 21 LTS", align="C", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(25)
     
-    # Khung thong tin sinh vien thuc hien
     pdf.set_font("Arial", "B", 10.5)
     pdf.set_text_color(20, 40, 80)
     pdf.cell(0, 7, "THÔNG TIN ĐỀ TÀI & NHÓM THỰC HIỆN:", align="C", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(3)
     
-    pdf.set_font("Arial", "", 10)
-    pdf.set_text_color(40, 40, 40)
     col_w = 40
     val_w = 110
     start_x = (pdf.w - (col_w + val_w)) / 2
@@ -120,7 +117,6 @@ def build_pdf():
         pdf.multi_cell(0, 4.8, text)
         pdf.ln(1.5)
 
-    # ABSTRACT
     add_section_header("TÓM TẮT BÁO CÁO (ABSTRACT)")
     add_paragraph(
         "Nghiên cứu này khảo sát định lượng ảnh hưởng của số lượng Client đồng thời (1, 10, 50 kết nối) đến hiệu năng "
@@ -132,7 +128,6 @@ def build_pdf():
         "chạy độc lập làm sáng tỏ ngưỡng bão hòa của mô hình Thread Pool và chi phí chuyển đổi ngữ cảnh trong môi trường cạnh tranh tài nguyên."
     )
 
-    # SECTION 1
     add_section_header("1. CÂU HỎI NGHIÊN CỨU VÀ PHẠM VI (RESEARCH QUESTION & SCOPE)")
     add_subsection_header("1.1. Câu hỏi nghiên cứu cốt lõi")
     add_paragraph(
@@ -149,7 +144,6 @@ def build_pdf():
         "và thời gian đo lường chính thức 20 giây cho mỗi lượt chạy. Mỗi kịch bản lặp lại ít nhất 3 lần để lấy giá trị trung bình."
     )
 
-    # SECTION 2
     add_section_header("2. CƠ SỞ LÝ THUYẾT (THEORETICAL BACKGROUND)")
     add_paragraph(
         "• Bản chất Byte Stream của TCP và bài toán Framing: Khác với UDP phân định dữ liệu theo ranh giới Datagram, TCP là giao thức "
@@ -175,7 +169,6 @@ def build_pdf():
         "Hệ thống tuân thủ nguyên tắc phân tách độc lập giữa máy chủ và công cụ tạo tải thông qua hai tiến trình riêng biệt:"
     )
     
-    # ASCII Architecture Box
     pdf.set_font("Consolas", "", 7.5)
     pdf.set_fill_color(248, 248, 248)
     pdf.set_draw_color(200, 200, 200)
@@ -207,7 +200,6 @@ def build_pdf():
         "Giao thức tuân thủ thứ tự byte mạng Big-Endian, áp dụng đối xứng cho cả gói Request và gói Response phản hồi:"
     )
     
-    # Table of Frame
     pdf.set_font("Arial", "B", 8)
     pdf.set_fill_color(220, 230, 242)
     pdf.set_draw_color(170, 170, 170)
@@ -219,7 +211,7 @@ def build_pdf():
     pdf.set_font("Arial", "", 8)
     frame_rows = [
         ("Body Length (N)", "4 bytes (int32)", "0 - 3", "Độ dài phần thân body (N = 8 + payload length = 1032 bytes). Xác định ranh giới gói."),
-        ("Request ID", "8 bytes (int64)", "4 - 11", "Mã định danh ghép bit (clientId << 32) | seq. Dùng để đối chiếu toàn vẹn gói phản hồi."),
+        ("Request ID", "8 bytes (int64)", "4 - 11", "Mã định danh duy nhất (AtomicLong hoặc ghép bit). Dùng đối chiếu toàn vẹn gói phản hồi."),
         ("Payload Data", "1024 bytes", "12 - 1035", "Mảng byte nhị phân dữ liệu thực nghiệm (cố định 1 KB cho Echo Benchmark)."),
         ("Tổng Khung Frame", "1036 bytes", "0 - 1035", "Tổng dung lượng một khung tin hoàn chỉnh (4 bytes Header + 1032 bytes Body).")
     ]
@@ -232,9 +224,9 @@ def build_pdf():
 
     add_subsection_header("3.3. Cơ Chế Xử Lý Đồng Thời & Chịu Lỗi An Toàn Tại Server")
     add_paragraph(
-        "• Cơ chế đọc an toàn với readFully(): Server sử dụng DataInputStream.readInt() đọc chính xác 4 bytes header N, sau đó gọi "
-        "readFully(body, 0, N) ép đọc đúng N bytes của body. Phương thức này bảo đảm không bao giờ xử lý dữ liệu dở dang khi luồng TCP bị phân mảnh.\n"
-        "• Chống tấn công cạn kiệt bộ nhớ (OOM / DoS): Server ràng buộc điều kiện nghiêm ngặt 8 <= N <= 65536 (MAX_BODY = 64 KB). "
+        "• Cơ chế đọc an toàn với readFully(): Server sử dụng DataInputStream và BufferedInputStream (8192 bytes) đọc chính xác "
+        "4 bytes header N, sau đó gọi readFully(frame, 4, N) ép đọc đủ N bytes của body. Giải quyết triệt để lỗi phân đoạn TCP.\n"
+        "• Phòng vệ tràn bộ nhớ (OOM / DoS): Server ràng buộc điều kiện nghiêm ngặt 8 <= N <= 65536 (MAX_BODY = 64 KB). "
         "Nếu nhận N < 8 hoặc N > 65536, Server lập tức ngắt kết nối socket mà không cấp phát bộ nhớ rác.\n"
         "• Timeout & Ngắt kết nối đột ngột: socket.setSoTimeout(30000) (30s) chống treo socket. Mọi ngoại lệ IO/SocketTimeout đều được "
         "bắt trong khối try-catch cục bộ và thực hiện socket.close() trong khối finally, bảo đảm 100% Server không bao giờ bị dừng hoạt động."
@@ -247,7 +239,6 @@ def build_pdf():
     add_section_header("4. MÔI TRƯỜNG VÀ PHƯƠNG PHÁP THỰC NGHIỆM (METHODOLOGY)")
     add_subsection_header("4.1. Thông Số Môi Trường Máy Đo Thực Nghiệm")
     
-    # Table of Environment
     pdf.set_font("Arial", "B", 8)
     pdf.set_fill_color(220, 230, 242)
     pdf.cell(48, 6, "Thành phần hệ thống", border=1, fill=True)
@@ -281,11 +272,9 @@ def build_pdf():
         "4. TC4 (Frame dị tật / Vượt ngưỡng): Client gửi gói tin N = 999999 hoặc N < 8; Server phát hiện vi phạm và đóng socket an toàn."
     )
 
-    # SECTION 5
     add_section_header("5. KẾT QUẢ THỰC NGHIỆM VÀ PHÂN TÍCH (RESULTS & ANALYSIS)")
     add_paragraph("Bảng tổng hợp dữ liệu thực nghiệm qua các lần chạy độc lập (Ma trận 3 mức tải x 3 lần lặp):")
     
-    # Table of Results
     pdf.set_font("Arial", "B", 8)
     pdf.set_fill_color(220, 230, 242)
     pdf.cell(24, 6, "Mức tải", border=1, fill=True)
@@ -330,11 +319,9 @@ def build_pdf():
         "hoặc mô hình Virtual Threads (Project Loom) trên Java 21."
     )
 
-    # SECTION 7
     add_section_header("7. BẢNG PHÂN CÔNG TRÁCH NHIỆM & TỶ LỆ ĐÓNG GÓP (CONTRIBUTION TABLE)")
     add_paragraph("Dự án được phân chia nhiệm vụ chuyên trách rõ ràng giữa 6 thành viên trong nhóm:")
     
-    # Table of Contribution
     pdf.set_font("Arial", "B", 7.5)
     pdf.set_fill_color(220, 230, 242)
     pdf.cell(10, 6, "STT", border=1, fill=True)
@@ -362,7 +349,6 @@ def build_pdf():
     pdf.set_font("Arial", "I", 7.5)
     pdf.cell(0, 5, "* Ghi chú: Nhóm gồm 6 sinh viên phân công khối lượng đồng đều, đã đối chiếu xác nhận sĩ số với Giảng viên phụ trách.", new_x="LMARGIN", new_y="NEXT")
 
-    # SECTION 8
     add_section_header("8. TÀI LIỆU THAM KHẢO & KHAI BÁO SỬ DỤNG AI (REFERENCES & AI DECLARATION)")
     add_subsection_header("8.1. Danh Mục Tài Liệu Tham Khảo Chuẩn IEEE")
     pdf.set_font("Arial", "", 8)

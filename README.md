@@ -150,17 +150,28 @@ mvn clean compile
 ### 5.2. Khởi động TCP Server (Process 1)
 
 ```bash
-java -cp bin com.research.server.TCPEchoServer --port 8080
+java -cp bin com.research.server.TCPEchoServer --port 8080 --cpu-log experiments/raw-data/cpu_server.csv
 ```
 
-_Server sẽ mở Socket lắng nghe tại cổng `8080` (mô hình Blocking Socket + Thread Pool) và khởi chạy luồng nền giám sát CPU._
+_Server sẽ mở Socket lắng nghe tại cổng `8080` (mô hình Blocking Socket + Thread Pool 256 workers) và khởi chạy luồng nền `CpuMonitor` ghi nhận tải CPU mỗi giây ra file CSV._
+
+**Các tham số dòng lệnh của TCP Server:**
+| Tham số | Giá trị mặc định | Giải thích ý nghĩa |
+| :--- | :---: | :--- |
+| `--host` | `0.0.0.0` | Địa chỉ IP giao diện mạng lắng nghe (0.0.0.0 cho tất cả card mạng) |
+| `--port` | `9000` | Cổng dịch vụ (khuyến nghị truyền `--port 8080` để đồng bộ với LoadGen) |
+| `--pool` | `256` | Số lượng luồng worker tối đa trong `FixedThreadPool` |
+| `--timeout-ms` | `30000` | Thời gian chờ đọc dữ liệu tối đa (`SO_TIMEOUT`) trước khi đóng socket |
+| `--cpu-log` | `null` | Đường dẫn file CSV xuất dữ liệu CPU tiến trình và toàn hệ thống |
+| `--cpu-interval-ms` | `1000` | Chu kỳ lấy mẫu CPU (mili-giây) |
+| `--verbose` | `false` | Bật chế độ in chi tiết log kết nối/ngắt kết nối ra màn hình |
 
 ### 5.3. Khởi động Load Generator (Process 2)
 
 Mở một cửa sổ dòng lệnh thứ hai để bắn tải:
 
 ```bash
-java -cp bin LoadGeneratorApp --host 127.0.0.1 --port 8080 --clients 10 --warmup 5 --duration 20 --payload 1024 --csv experiments/raw-data/manual_run.csv
+java -cp bin LoadGeneratorApp --host 127.0.0.1 --port 8080 --clients 10 --warmup 5 --duration 20 --payload 1024 --csv experiments/raw-data/manual_run.csv --json experiments/raw-data/run_latest.json
 ```
 
 **Các tham số dòng lệnh của Load Generator:**
@@ -168,11 +179,15 @@ java -cp bin LoadGeneratorApp --host 127.0.0.1 --port 8080 --clients 10 --warmup
 | :--- | :---: | :--- |
 | `--host` | `127.0.0.1` | Địa chỉ IP của máy chủ TCP |
 | `--port` | `8080` | Cổng dịch vụ lắng nghe |
-| `--clients` | `1` | Số lượng luồng Client đồng thời (mỗi client 1 socket riêng) |
+| `--clients` | `1` | Số lượng luồng Client đồng thời (mỗi client 1 socket riêng biệt) |
 | `--warmup` | `5` | Thời gian chạy khởi động làm nóng (giây), không ghi số liệu |
 | `--duration`| `20` | Thời gian đo lường chính thức (giây) |
-| `--payload` | `1024` | Kích thước mảng byte dữ liệu mỗi request |
+| `--payload` | `1024` | Kích thước mảng byte dữ liệu mỗi request (mặc định 1 KB) |
+| `--run-id` | `1` | Mã định danh của đợt chạy thực nghiệm |
 | `--csv` | `benchmark_results.csv` | Đường dẫn file lưu kết quả chi tiết từng đợt chạy |
+| `--json` | `run_latest.json` | Đường dẫn file JSON xuất kết quả tóm tắt đợt chạy mới nhất |
+| `--test-invalid` | `false` | Gửi frame độ dài dị tật (999,999,999 bytes) kiểm thử phản ứng Server |
+| `--kill-early` | `false` | Cưỡng bức đóng socket sau 5 request để kiểm thử chịu lỗi Server |
 
 ---
 
